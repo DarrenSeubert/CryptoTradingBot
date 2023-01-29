@@ -4,17 +4,46 @@ namespace CryptoTradingBot;
 
 internal sealed class Bot {
     private const double NOTIONAL_OFFSET = 0.05;
-    
+    private const string SYMBOL = "ETH/USD";
+
     public static async Task Main() {
         var dClient = Environments.Paper.GetAlpacaCryptoDataClient(new SecretKey(Constants.KEY_ID, Constants.SECRET_KEY));
-        // var tClient = Environments.Paper.GetAlpacaTradingClient(new SecretKey(Constants.KEY_ID, Constants.SECRET_KEY));
-        // var account = await tClient.GetAccountAsync();
+        var tClient = Environments.Paper.GetAlpacaTradingClient(new SecretKey(Constants.KEY_ID, Constants.SECRET_KEY));
+        var sClient = Environments.Paper.GetAlpacaCryptoStreamingClient(new SecretKey(Constants.KEY_ID, Constants.SECRET_KEY));
 
-        DateTime start = DateTime.Today.AddDays(-1);
+        await sClient.ConnectAndAuthenticateAsync();
+        var account = await tClient.GetAccountAsync();
+
+        DateTime start = DateTime.Today.AddMinutes(-10);
         DateTime end = DateTime.Today;
 
-        var bars = await dClient.ListHistoricalBarsAsync(new HistoricalCryptoBarsRequest("ETHUSD", start, end, BarTimeFrame.Day));
-        Console.WriteLine(bars);
+        var bars = await dClient.ListHistoricalBarsAsync(new HistoricalCryptoBarsRequest(SYMBOL, start, end, BarTimeFrame.Minute));
+        var startPrice = bars.Items.First().Open;
+        var endPrice = bars.Items.Last().Close;
+
+        decimal lowPrice = bars.Items.First().Low;
+
+        foreach (var item in bars.Items) {
+            if (lowPrice > item.Low) {
+                lowPrice = item.Low;
+            }
+        }
+
+        Console.WriteLine("Low Price (Last 10 min.): " + lowPrice);
+        Console.WriteLine("Current Price $" + endPrice);
+
+        var percentChange = (endPrice - startPrice) / startPrice;
+        Console.WriteLine($"{SYMBOL} moved {percentChange:P} over the last 10 mins.");
+
+        var barSubscription = sClient.GetMinuteBarSubscription(SYMBOL);
+        barSubscription.Received += (bar) => {
+            Console.WriteLine(bar);
+        };
+
+        await sClient.SubscribeAsync(barSubscription);
+        //while(true);
+
+        
 
 
 
@@ -23,23 +52,6 @@ internal sealed class Bot {
 
 
 
-
-
-
-
-
-        // var endDate = DateTime.Today;
-        // var startDate = endDate.AddMinutes(-10000);
-
-        // var page = await dClient.ListHistoricalBarsAsync(new HistoricalCryptoBarsRequest("ETHUSD", startDate, endDate, BarTimeFrame.Minute));
-        // var bars = page.Items;
-
-        // See how much ETH moved in that timeframe.
-        // var startPrice = bars.First().Open;
-        // var endPrice = bars.Last().Close;
-
-        // var percentChange = (endPrice - startPrice) / startPrice;
-        // Console.WriteLine($"AAPL moved {percentChange:P} over the last 5 days.");
 
 
 

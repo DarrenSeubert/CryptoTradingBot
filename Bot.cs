@@ -7,47 +7,6 @@ internal sealed class Bot {
     private const string SYMBOL = "ETH/USD";
     private const string SYMBOL_NS = "ETHUSD";
 
-    public static async Task<IReadOnlyList<IBar>> getHistoricalData(IAlpacaCryptoDataClient dClient, int minsBack, bool writeToFile) {
-        DateTime end = DateTime.UtcNow;
-        DateTime start = end.AddMinutes(-minsBack);
-
-        IReadOnlyList<IBar> bars = (await dClient.ListHistoricalBarsAsync(new HistoricalCryptoBarsRequest(SYMBOL, start, end, BarTimeFrame.Minute))).Items;
-        decimal startPrice = bars.First().Open;
-        decimal endPrice = bars.Last().Close;
-        decimal lowPrice = bars.First().Low;
-        
-        if (writeToFile) {
-            string fileOutput = $"Last {minsBack} Minutes Report:\n";
-            foreach (var item in bars) {
-                fileOutput += item.TimeUtc.ToString().Substring(10) + "\n";
-
-                if (lowPrice > item.Low) {
-                    lowPrice = item.Low;
-                }
-            }
-            fileOutput += "\n";
-
-            foreach (var item in bars) {
-                fileOutput += item.Vwap + "\n";
-            }
-            File.WriteAllText("./histOutput.txt", fileOutput);
-        } else {
-            foreach (var item in bars) {
-                if (lowPrice > item.Low) {
-                    lowPrice = item.Low;
-                }
-            }
-        }
-
-        Console.WriteLine($"Low Price (Last {minsBack} mins.): $" + lowPrice);
-        Console.WriteLine("Current (Close) Price: $" + endPrice);
-
-        decimal percentChange = (endPrice - startPrice) / startPrice;
-        Console.WriteLine($"{SYMBOL} moved {percentChange:P} over the last {minsBack} mins.");
-
-        return bars;
-    }
-
     public static async Task Main() {
         Console.WriteLine("Current Time: " + DateTime.UtcNow.ToString().Substring(10));
         
@@ -74,5 +33,46 @@ internal sealed class Bot {
 
 
         //IOrder buyLimitOrder = await tClient.PostOrderAsync(OrderSide.Buy.Limit())
+    }
+
+    public static async Task<IReadOnlyList<IBar>> getHistoricalData(IAlpacaCryptoDataClient dClient, int minsBack, bool writeToFile) {
+        DateTime end = DateTime.UtcNow;
+        DateTime start = end.AddMinutes(-minsBack);
+
+        IReadOnlyList<IBar> bars = (await dClient.ListHistoricalBarsAsync(new HistoricalCryptoBarsRequest(SYMBOL, start, end, BarTimeFrame.Minute))).Items;
+        decimal startPrice = bars.First().Open;
+        decimal endPrice = bars.Last().Close;
+        decimal lowPrice = bars.First().Low;
+        
+        if (writeToFile) {
+            string fileOutput = $"Last {minsBack} Minutes Report:\n";
+            foreach (var item in bars) {
+                fileOutput += item.TimeUtc.ToString().Substring(10) + "\n";
+
+                if (lowPrice > item.Low) {
+                    lowPrice = item.Low;
+                }
+            }
+            fileOutput += "\n";
+
+            foreach (var item in bars) {
+                fileOutput += item.Vwap + "\n";
+            }
+            File.WriteAllText("./HistOutput.txt", fileOutput);
+        } else {
+            foreach (var item in bars) {
+                if (lowPrice > item.Low) {
+                    lowPrice = item.Low;
+                }
+            }
+        }
+
+        Console.WriteLine($"Low Price (Last {minsBack} mins.): $" + lowPrice);
+        Console.WriteLine("Current (Close) Price: $" + endPrice);
+
+        decimal percentChange = (endPrice - startPrice) / startPrice;
+        Console.WriteLine($"{SYMBOL} moved {percentChange:P} over the last {minsBack} mins.");
+
+        return bars;
     }
 }

@@ -3,72 +3,76 @@
 namespace CryptoTradingBot;
 
 internal sealed class Bot {
-    private const double NOTIONAL_OFFSET = 0.05;
+    private const decimal NOTIONAL_OFFSET = 0.05m;
     private const string SYMBOL = "ETH/USD";
+    private const string SYMBOL_NS = "ETHUSD";
 
-    public static async Task Main() {
-        var dClient = Environments.Paper.GetAlpacaCryptoDataClient(new SecretKey(Constants.KEY_ID, Constants.SECRET_KEY));
-        var tClient = Environments.Paper.GetAlpacaTradingClient(new SecretKey(Constants.KEY_ID, Constants.SECRET_KEY));
-        var sClient = Environments.Paper.GetAlpacaCryptoStreamingClient(new SecretKey(Constants.KEY_ID, Constants.SECRET_KEY));
+    public static async Task<IReadOnlyList<IBar>> getHistoricalData(IAlpacaCryptoDataClient dClient, int minsBack, bool writeToFile) {
+        DateTime end = DateTime.UtcNow;
+        DateTime start = end.AddMinutes(-minsBack);
 
-        await sClient.ConnectAndAuthenticateAsync();
-        var account = await tClient.GetAccountAsync();
+        IReadOnlyList<IBar> bars = (await dClient.ListHistoricalBarsAsync(new HistoricalCryptoBarsRequest(SYMBOL, start, end, BarTimeFrame.Minute))).Items;
+        decimal startPrice = bars.First().Open;
+        decimal endPrice = bars.Last().Close;
+        decimal lowPrice = bars.First().Low;
+        
+        if (writeToFile) {
+            string fileOutput = $"Last {minsBack} Minutes Report:\n";
+            foreach (var item in bars) {
+                fileOutput += item.TimeUtc.ToString().Substring(10) + "\n";
 
-        DateTime start = DateTime.Today.AddMinutes(-10);
-        DateTime end = DateTime.Today;
+                if (lowPrice > item.Low) {
+                    lowPrice = item.Low;
+                }
+            }
+            fileOutput += "\n";
 
-        var bars = await dClient.ListHistoricalBarsAsync(new HistoricalCryptoBarsRequest(SYMBOL, start, end, BarTimeFrame.Minute));
-        var startPrice = bars.Items.First().Open;
-        var endPrice = bars.Items.Last().Close;
-
-        decimal lowPrice = bars.Items.First().Low;
-
-        foreach (var item in bars.Items) {
-            if (lowPrice > item.Low) {
-                lowPrice = item.Low;
+            foreach (var item in bars) {
+                fileOutput += item.Vwap + "\n";
+            }
+            File.WriteAllText("./histOutput.txt", fileOutput);
+        } else {
+            foreach (var item in bars) {
+                if (lowPrice > item.Low) {
+                    lowPrice = item.Low;
+                }
             }
         }
 
-        Console.WriteLine("Low Price (Last 10 min.): " + lowPrice);
-        Console.WriteLine("Current Price $" + endPrice);
+        Console.WriteLine($"Low Price (Last {minsBack} mins.): $" + lowPrice);
+        Console.WriteLine("Current (Close) Price: $" + endPrice);
 
-        var percentChange = (endPrice - startPrice) / startPrice;
-        Console.WriteLine($"{SYMBOL} moved {percentChange:P} over the last 10 mins.");
+        decimal percentChange = (endPrice - startPrice) / startPrice;
+        Console.WriteLine($"{SYMBOL} moved {percentChange:P} over the last {minsBack} mins.");
 
-        var barSubscription = sClient.GetMinuteBarSubscription(SYMBOL);
-        barSubscription.Received += (bar) => {
-            Console.WriteLine(bar);
-        };
+        return bars;
+    }
 
-        await sClient.SubscribeAsync(barSubscription);
-        //while(true);
-
+    public static async Task Main() {
+        Console.WriteLine("Current Time: " + DateTime.UtcNow.ToString().Substring(10));
         
+        IAlpacaCryptoDataClient dClient = Environments.Paper.GetAlpacaCryptoDataClient(new SecretKey(Constants.KEY_ID, Constants.SECRET_KEY));
+        IAlpacaTradingClient tClient = Environments.Paper.GetAlpacaTradingClient(new SecretKey(Constants.KEY_ID, Constants.SECRET_KEY));
+        IAccount account = await tClient.GetAccountAsync();
+
+        decimal cash = account.TradableCash;
+        decimal? assetsValue = account.LongMarketValue;
+
+        IReadOnlyList<IBar> bars = await getHistoricalData(dClient, 10, true);
+
+        Console.WriteLine();
+        IOrder buyOrder = await tClient.PostOrderAsync(OrderSide.Buy.Market(SYMBOL, OrderQuantity.Notional(1.0m + NOTIONAL_OFFSET)).WithDuration(TimeInForce.Gtc));
+        // Console.WriteLine("Buy Order: " + buyOrder + "\n");
+
+        IPosition ethPos = await tClient.GetPositionAsync(SYMBOL_NS);
+        Console.WriteLine("Position: " + ethPos + "\n");
+        decimal? ethMarketVal = ethPos.MarketValue; 
+        
+        IOrder sellOrder = await tClient.PostOrderAsync(OrderSide.Sell.Market(SYMBOL, OrderQuantity.Notional(1.0m)).WithDuration(TimeInForce.Gtc));
+        // Console.WriteLine("Sell Order: " + sellOrder);
 
 
 
-
-
-
-
-
-
-
-
-        // Console.WriteLine(account.ToString());
-        // var buyOrder = await client.PostOrderAsync(OrderSide.Buy.Market("ETHUSD", 20).WithDuration(TimeInForce.Ioc));
-        //Console.WriteLine(buyOrder);
-        // var buyOrder = await tClient.PostOrderAsync(OrderSide.Buy.Market("BTCUSD", OrderQuantity.Fractional((decimal) 0.1)).WithDuration(TimeInForce.Ioc));
-
-        // var ETH = await tClient.GetAssetAsync("ETHUSD"); 
-        // Console.WriteLine(ETH + "\n");
-
-        // var ethPos = await tClient.GetPositionAsync("ETHUSD");
-        // Console.WriteLine(ethPos);
-        // 
-        // var sellOrder = await tClient.PostOrderAsync(OrderSide.Sell.Market("BTCUSD", OrderQuantity.Notional((decimal) 1)).WithDuration(TimeInForce.Ioc));
-        // Console.WriteLine();
-        // Console.WriteLine(sellOrder);
-
+        //IOrder buyLimitOrder = await tClient.PostOrderAsync(OrderSide.Buy.Limit())
     }
 }

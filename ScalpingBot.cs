@@ -6,7 +6,8 @@ internal sealed class ScalpingBot {
     private const string SYMBOL = "ETH/USD";
     private const string SYMBOL_NS = "ETHUSD";
 
-    private const int FREQUENCY_MINS = 5;
+    private const int FREQUENCY_MINS = 1;
+    private const int HISTORICAL_DATA_MINS = 10;
     private const int MINS_TO_MILLI = 60000;
     private const decimal NOTIONAL_PERCENT = 0.5m;
     private const decimal TRADING_FEE = 0.003m;
@@ -35,7 +36,7 @@ internal sealed class ScalpingBot {
             Console.WriteLine("-----------------------------------");
             string currentTime = DateTime.UtcNow.ToString();
             Console.WriteLine("Current Time: " + currentTime.Substring(currentTime.Length - 10));
-            await getHistoricalData(dClient, tClient, false);
+            await getHistoricalData(dClient, tClient, true);
             bool checkedMarket = await checkMarket(tClient, account);
             Console.WriteLine($"Check Market Complete! Returned {checkedMarket}");
             await Task.Delay(FREQUENCY_MINS * MINS_TO_MILLI);
@@ -44,7 +45,7 @@ internal sealed class ScalpingBot {
 
     public static async Task<IReadOnlyList<IBar>> getHistoricalData(IAlpacaCryptoDataClient dClient, IAlpacaTradingClient tClient, bool logInfo) {
         DateTime end = DateTime.UtcNow;
-        DateTime start = end.AddMinutes(-FREQUENCY_MINS);
+        DateTime start = end.AddMinutes(-HISTORICAL_DATA_MINS);
         IReadOnlyList<IBar> bars = (await dClient.ListHistoricalBarsAsync(new HistoricalCryptoBarsRequest(SYMBOL, start, end, BarTimeFrame.Minute))).Items;
 
         if (logInfo) {
@@ -54,7 +55,7 @@ internal sealed class ScalpingBot {
             decimal endPrice = bars.Last().Close;
             Console.WriteLine($"{SYMBOL} Current (Close) Price: ${endPrice}");
             decimal percentChange = (endPrice - startPrice) / startPrice;
-            Console.WriteLine($"{SYMBOL} moved {percentChange:P} over the last {FREQUENCY_MINS} mins.");
+            Console.WriteLine($"{SYMBOL} moved {percentChange:P} over the last {HISTORICAL_DATA_MINS} mins.");
         }
 
         decimal currentPrice = bars.Last().Close;
@@ -88,7 +89,7 @@ internal sealed class ScalpingBot {
     }
 
     private static void writeHistoryToFile(IReadOnlyList<IBar> bars) {
-        string timeOutput = $"Last {FREQUENCY_MINS} Minutes Report:\n";
+        string timeOutput = $"Last {HISTORICAL_DATA_MINS} Minutes Report:\n";
         string priceOutput = "\n";
         string currentTime = "";
         foreach (IBar bar in bars) {

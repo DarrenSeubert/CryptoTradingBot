@@ -107,13 +107,24 @@ internal sealed class ScalpingBot {
     public static async Task<bool> checkMarket(IAlpacaTradingClient tClient, IAccount account) {
         if (spread < totalFees) {
             Console.WriteLine("Spread is Less than Total Fees, Not a Profitable Opportunity to Trade");
-            Console.WriteLine($"SPREAD: {spread}");
-            Console.WriteLine($"TOTAL FEES: {totalFees}");
-            Console.WriteLine($"BUY PRICE: {buyPrice}");
-            Console.WriteLine($"SELL PRICE: {sellPrice}");
+            Console.WriteLine($"SPREAD: ${spread}");
+            Console.WriteLine($"TOTAL FEES: ${totalFees}");
+            Console.WriteLine($"BUY PRICE: ${buyPrice}");
+            Console.WriteLine($"SELL PRICE: ${sellPrice}");
 
             return false;
         } else {
+            Console.WriteLine($"Buy Order bool: {buyOrder}");
+            Console.WriteLine($"Sell Order bool: {sellOrder}");
+            Console.WriteLine($"Current Price: ${currentPrice}");
+            Console.WriteLine($"Buy Price: ${buyPrice}");
+            Console.WriteLine($"Sell Price: ${sellPrice}");
+
+            Console.WriteLine($"Buy Order Price: ${buyOrderPrice}");
+            Console.WriteLine($"Sell Order Price: ${sellOrderPrice}");
+
+            Console.WriteLine($"Current Position: {currentPosition}");
+
             if (currentPosition <= 0.01m && (!buyOrder) && currentPrice > buyPrice) {
                 Console.WriteLine("No Position, No Open Orders, Spread is Greater than Total Fees, Placing Limit Buy Order at Buy Price");
                 decimal availCash = account.TradableCash;

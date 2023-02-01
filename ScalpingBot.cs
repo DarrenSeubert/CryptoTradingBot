@@ -71,10 +71,10 @@ internal sealed class ScalpingBot {
             }
         }
 
-        buyPrice = Math.Round(minLowPrice * 1.002m, 1);
-        sellPrice = Math.Round(maxHighPrice * 0.998m, 1);
-        spread = Math.Round(sellPrice - buyPrice, 1);
-        totalFees = Math.Round((buyPrice * TRADING_FEE) + (sellPrice * TRADING_FEE), 1);
+        buyPrice = minLowPrice * 1.002m;
+        sellPrice = maxHighPrice * 0.998m;
+        spread = sellPrice - buyPrice;
+        totalFees = (buyPrice * TRADING_FEE) + (sellPrice * TRADING_FEE);
 
         try {
             IPosition symbolPos = await tClient.GetPositionAsync(SYMBOL_NS);

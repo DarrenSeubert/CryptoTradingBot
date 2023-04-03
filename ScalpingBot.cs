@@ -3,8 +3,8 @@
 namespace CryptoTradingBot;
 
 internal sealed class ScalpingBot {
-    private const string SYMBOL = "ETH/USD";
-    private const string SYMBOL_NS = "ETHUSD";
+    private const string SYMBOL = "SHIB/USD";
+    private const string SYMBOL_NS = "SHIBUSD";
 
     private const int FREQUENCY_MINS = 1;
     private const int HISTORICAL_DATA_MINS = 10;
@@ -30,13 +30,14 @@ internal sealed class ScalpingBot {
     public static async Task Main() {
         IAlpacaCryptoDataClient dClient = Environments.Paper.GetAlpacaCryptoDataClient(new SecretKey(Constants.KEY_ID, Constants.SECRET_KEY));
         IAlpacaTradingClient tClient = Environments.Paper.GetAlpacaTradingClient(new SecretKey(Constants.KEY_ID, Constants.SECRET_KEY));
-        IAccount account = await tClient.GetAccountAsync();
+        IAccount account;
 
         while (true) {
             Console.WriteLine("-----------------------------------");
             string currentTime = DateTime.UtcNow.ToString();
             Console.WriteLine("Current Time: " + currentTime.Substring(currentTime.Length - 10));
             await getHistoricalData(dClient, tClient, true);
+            account = await tClient.GetAccountAsync();
             bool checkedMarket = await checkMarket(tClient, account);
             Console.WriteLine($"Check Market Complete! Returned {checkedMarket}");
             await Task.Delay(FREQUENCY_MINS * MINS_TO_MILLI);
@@ -50,7 +51,6 @@ internal sealed class ScalpingBot {
 
         if (logInfo) {
             writeHistoryToFile(bars);
-
             decimal startPrice = bars.First().Open;
             decimal endPrice = bars.Last().Close;
             Console.WriteLine($"{SYMBOL} Current (Close) Price: ${endPrice}");
